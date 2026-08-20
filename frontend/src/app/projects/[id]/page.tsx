@@ -182,7 +182,7 @@ export default function ProjectDetailPage() {
                 <div className="mb-6">
                   <h4 className="font-semibold mb-3">Required Skills:</h4>
                   <div className="flex flex-wrap gap-2">
-                    {project.skills?.map((skill) => (
+                {project.skills?.map((skill: string) => (
                       <Badge key={skill} variant="outline">
                         {skill}
                       </Badge>
@@ -410,14 +410,8 @@ export default function ProjectDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start">
-                    <ChatBubbleLeftRightIcon className="h-4 w-4 mr-2" />
-                    Contact Support
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <DocumentTextIcon className="h-4 w-4 mr-2" />
-                    Report Project
-                  </Button>
+                  <Link href="/about" className="block"><Button variant="outline" className="w-full justify-start"><ChatBubbleLeftRightIcon className="h-4 w-4 mr-2" />Contact Support</Button></Link>
+                  <Link href="/disputes" className="block"><Button variant="outline" className="w-full justify-start"><DocumentTextIcon className="h-4 w-4 mr-2" />Report Project</Button></Link>
                 </div>
               </CardContent>
             </Card>

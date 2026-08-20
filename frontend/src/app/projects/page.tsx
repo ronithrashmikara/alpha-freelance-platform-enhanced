@@ -18,7 +18,7 @@ export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [sortBy, setSortBy] = useState('newest')
-  const [projects, setProjects] = useState([])
+  const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -173,7 +173,7 @@ export default function ProjectsPage() {
                   </CardDescription>
 
                   <div className="flex flex-wrap gap-1 mb-4">
-                    {project.skills.slice(0, 3).map((skill) => (
+                      {project.skills.slice(0, 3).map((skill: string) => (
                       <Badge key={skill} variant="outline" className="text-xs">
                         {skill}
                       </Badge>

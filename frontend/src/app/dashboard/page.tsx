@@ -308,9 +308,7 @@ export default function DashboardPage() {
                           Release Payment
                         </Button>
                       )}
-                      <Button size="sm" variant="outline">
-                        View Details
-                      </Button>
+                      <Link href="/wallet"><Button size="sm" variant="outline">View in wallet</Button></Link>
                     </div>
                   </div>
                 ))}
@@ -348,9 +346,7 @@ export default function DashboardPage() {
                   Create Dispute
                 </Button>
               </Link>
-              <Button variant="outline" className="w-full">
-                View Wallet
-              </Button>
+              <Link href="/wallet"><Button variant="outline" className="w-full">View Wallet</Button></Link>
             </div>
           </CardContent>
         </Card>
