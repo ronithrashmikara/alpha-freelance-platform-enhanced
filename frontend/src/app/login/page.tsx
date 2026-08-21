@@ -39,13 +39,9 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <Link href="/" className="flex items-center justify-center space-x-2 mb-8">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">A</span>
-            </div>
-            <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              ALPHA
-            </span>
+          <Link href="/" className="mb-8 flex items-center justify-center gap-3" aria-label="Alpha home">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#ff6542] text-sm font-black text-[#171817]">A</span>
+            <span className="text-2xl font-semibold tracking-[-.05em] text-[#171817]">ALPHA<span className="text-[#ff6542]">.</span></span>
           </Link>
           <h2 className="text-3xl font-bold text-gray-900">
             Welcome back

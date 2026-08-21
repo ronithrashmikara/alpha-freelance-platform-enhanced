@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  devIndicators: false,
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       {
@@ -9,9 +11,6 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
-  },
-  experimental: {
-    allowedHosts: ['*'],
   },
 }
 
