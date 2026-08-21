@@ -1,33 +1,38 @@
-# Alpha deployment: Koyeb + Neon
+# Alpha deployment: Render + Neon
 
 The repository contains two independently deployable services:
 
-- `backend/`: Laravel API, listening on port `8000`
-- `frontend/`: Next.js app, listening on port `3000`
+- `backend/`: Laravel API
+- `frontend/`: Next.js app
 
 ## Neon
 
-Create a Neon project and copy its **pooled** connection string. The Laravel
-service needs these variables:
+Create a Neon project and copy both connection strings. Use the pooled URL for
+application traffic and the direct URL for migrations:
 
 - `APP_KEY`: output of `php artisan key:generate --show`
 - `APP_ENV=production`
 - `APP_DEBUG=false`
 - `DB_CONNECTION=pgsql`
-- `DB_URL=<Neon pooled connection string>`
+- `DB_URL=<Neon pooled connection string (-pooler host)>`
+- `DB_MIGRATION_URL=<Neon direct connection string>`
 - `DB_SSLMODE=require`
 - `LOG_CHANNEL=stderr`
 
-The backend container runs `php artisan migrate --force` during startup.
+The backend container runs migrations through the direct connection during
+startup, then uses the pooled connection for web requests.
 
-## Koyeb
+## Render
 
-Create one Koyeb app with two Web Services, both built from Dockerfiles:
+The root `render.yaml` Blueprint defines two free Docker web services in the
+Singapore region:
 
-1. Backend: repository subdirectory `backend`, port `8000`, health path `/up`.
-2. Frontend: repository subdirectory `frontend`, port `3000`, health path `/`.
+1. `alpha-api`: Laravel backend, health path `/up`.
+2. `alpha-web`: Next.js frontend, health path `/`.
 
-Set `API_INTERNAL_URL=https://<backend-service-domain>/api` on the frontend.
+Create a Render Blueprint from the repository. During setup, provide the two
+Neon URLs. After Render assigns the API domain, set
+`API_INTERNAL_URL=https://<backend-service-domain>/api` on `alpha-web`.
 The browser uses the frontend's same-origin `/api/backend/*` proxy, so the
 backend address remains a runtime setting and CORS is not required for normal
 frontend traffic.
