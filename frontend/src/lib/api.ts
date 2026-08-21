@@ -1,4 +1,7 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+// In production the browser talks to the same-origin Next.js proxy. This avoids
+// baking a Koyeb backend URL into the client bundle and keeps local development
+// working without an environment file.
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/backend';
 
 class ApiClient {
   private baseURL: string;

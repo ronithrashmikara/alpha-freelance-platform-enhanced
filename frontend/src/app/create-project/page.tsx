@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_BASE_URL } from '@/lib/api';
 
 export default function CreateProject() {
   const router = useRouter();
@@ -47,7 +48,7 @@ export default function CreateProject() {
 
       const skillsArray = formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill);
 
-      const response = await fetch(`http://127.0.0.1:8000/api/projects`, {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

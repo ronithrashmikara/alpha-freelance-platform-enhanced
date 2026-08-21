@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_BASE_URL } from '@/lib/api';
 
 interface Wallet {
   id: number;
@@ -52,7 +53,7 @@ export default function Wallet() {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/wallet`, {
+      const response = await fetch(`${API_BASE_URL}/wallet`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -76,7 +77,7 @@ export default function Wallet() {
       const token = localStorage.getItem('auth_token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/wallet/transactions`, {
+      const response = await fetch(`${API_BASE_URL}/wallet/transactions`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -95,7 +96,7 @@ export default function Wallet() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/wallet/add-funds`, {
+      const response = await fetch(`${API_BASE_URL}/wallet/add-funds`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +128,7 @@ export default function Wallet() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/wallet/withdraw`, {
+      const response = await fetch(`${API_BASE_URL}/wallet/withdraw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

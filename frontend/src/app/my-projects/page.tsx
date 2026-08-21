@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/lib/api';
 
 interface Project {
   id: number;
@@ -44,7 +45,7 @@ export default function MyProjects() {
 
       // Since there's no specific endpoint for user's projects, we'll fetch all projects
       // and filter by user in a real implementation, this would be a dedicated endpoint
-      const response = await fetch(`http://127.0.0.1:8000/api/projects`, {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
@@ -82,7 +83,7 @@ export default function MyProjects() {
         return;
       }
 
-      const response = await fetch(`http://127.0.0.1:8000/api/projects/${projectId}`, {
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_BASE_URL } from '@/lib/api';
 import Link from 'next/link';
 
 interface Bid {
@@ -50,7 +51,7 @@ export default function MyBids() {
 
       // For demo purposes, we'll fetch bids from the first project
       // In a real app, there would be a dedicated endpoint for user's bids
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects/1/bids`, {
+      const response = await fetch(`${API_BASE_URL}/projects/1/bids`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -106,7 +107,7 @@ export default function MyBids() {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bids/${bidId}`, {
+      const response = await fetch(`${API_BASE_URL}/bids/${bidId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

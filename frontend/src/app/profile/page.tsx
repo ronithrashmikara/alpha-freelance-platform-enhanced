@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_BASE_URL } from '@/lib/api';
 
 interface User {
   id: number;
@@ -47,7 +48,7 @@ export default function Profile() {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/me`, {
+      const response = await fetch(`${API_BASE_URL}/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -78,7 +79,7 @@ export default function Profile() {
       const token = localStorage.getItem('auth_token');
       const skillsArray = formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile`, {
+      const response = await fetch(`${API_BASE_URL}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
