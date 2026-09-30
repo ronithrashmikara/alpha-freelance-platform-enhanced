@@ -65,11 +65,15 @@ class AuthTest extends TestCase
 
     public function test_protected_routes_reject_missing_or_unknown_tokens_and_logout_revokes_the_token(): void
     {
-        $this->getJson('/api/me')->assertUnauthorized();
-        $this->withToken('1|not-a-real-token')->getJson('/api/me')->assertUnauthorized();
-        $this->postJson('/api/projects/1/bids', [])->assertUnauthorized();
-
         $user = $this->makeUser();
+        $project = $this->makeProject($this->makeUser());
+
+        $this->getJson('/api/me')->assertUnauthorized();
+        $this->postJson("/api/projects/{$project->id}/bids", [])->assertUnauthorized();
+        $this->withToken('1|not-a-real-token')->getJson('/api/me')->assertUnauthorized();
+        $this->withToken('1|not-a-real-token')->postJson("/api/projects/{$project->id}/bids", [])->assertUnauthorized();
+        $this->assertDatabaseCount('bids', 0);
+
         $token = $user->createToken('test')->plainTextToken;
 
         $this->withToken($token)->postJson('/api/logout')->assertOk();

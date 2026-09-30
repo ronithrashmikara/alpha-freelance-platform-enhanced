@@ -81,6 +81,18 @@ class KnownBugsTest extends TestCase
         $this->assertSame(50.0, $this->balanceOf($user));
     }
 
+    /** The wallet page's "add funds" (WalletController::addFunds) also inserts type "deposit". */
+    public function test_add_funds_from_the_wallet_page_is_recorded(): void
+    {
+        $user = $this->makeUser('consumer', 0);
+
+        $this->actingWithToken($user)
+            ->postJson('/api/wallet/add-funds', ['amount' => 50, 'payment_method' => 'credit_card'])
+            ->assertOk();
+
+        $this->assertSame(50.0, $this->balanceOf($user));
+    }
+
     /**
      * AdminController::resolveDispute loads $dispute->raisedByUser / againstUser,
      * relations that do not exist on Dispute (it has complainant / respondent).

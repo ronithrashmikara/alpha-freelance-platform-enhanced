@@ -93,6 +93,8 @@ class PaymentController extends Controller
             // Check client wallet balance
             $clientWallet = $request->user()->wallet;
             if ($clientWallet->balance_usdt < $acceptedBid->amount) {
+                // Close the transaction opened above before returning.
+                DB::rollBack();
                 return response()->json([
                     'message' => 'Insufficient wallet balance'
                 ], 400);
