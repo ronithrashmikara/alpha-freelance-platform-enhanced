@@ -127,7 +127,7 @@ export default function ForgotPasswordPage() {
             <li>1. Enter your email address above</li>
             <li>2. If it has an account, we email it an 8-character reset code</li>
             <li>3. Enter the code with your email to set a new password</li>
-            <li>4. The code expires in 24 hours. The code you saved at sign-up also works while it is valid</li>
+            <li>4. The code expires in 24 hours</li>
           </ol>
         </div>
       </div>

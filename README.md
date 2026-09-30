@@ -133,9 +133,9 @@ held ──(client releases it after the project is completed: freelancer's wall
 held ──(client requests a refund, with a reason)──▶ refund_requested ──(admin)──▶ refunded
 ```
 
-The refund branch exists in the code but does not currently work on PostgreSQL: `refund_requested` is not one of the values the `payments.status` column allows (see [Known issues](#known-issues)). The wallet's `escrow_balance` column is never updated; money in escrow exists only as the `held` payment row. Deposits and withdrawals are also simulated (crypto deposits are auto-approved).
+Refunds are requested by the client and processed by an admin, who returns the money to the client's wallet and marks the project `cancelled`. The wallet's `escrow_balance` column is never updated; money in escrow exists only as the `held` payment row. Deposits and withdrawals are also simulated (crypto deposits are auto-approved).
 
-**Dispute** (`disputes.status`): `open` → `in_review` → `resolved` (admin, with a written resolution) → `closed` (by either party). Posting a message to a closed dispute reopens it.
+**Dispute** (`disputes.status`): `open` → `in_review` → `resolved` (admin, with a written resolution) → `closed` (by either party). Posting a message to a closed dispute reopens it. The admin resolve endpoint can also credit the winning side's wallet with a refund amount; that credit is created by the ledger, not taken from the held escrow payment.
 
 ## Tests
 
@@ -143,25 +143,22 @@ The refund branch exists in the code but does not currently work on PostgreSQL: 
 cd backend && php artisan test
 ```
 
-The suite in `backend/tests` covers bid placement, auto-acceptance, acceptance and withdrawal; the escrow ledger (fund, complete, release, and the guards on each step); the dispute lifecycle; Sanctum token login, logout and rejection of bad tokens; and the admin role gates (18 tests). Requests authenticate with real Sanctum tokens, as the frontend does.
+The suite in `backend/tests` has 30 tests. It covers bid placement, auto-acceptance, acceptance and withdrawal; the escrow ledger (fund, complete, release, refund, and the guards on each step); wallet deposits, withdrawals and history; the dispute lifecycle, including the admin resolve endpoint and statistics; registration, Sanctum token login and logout, and password reset; the admin role gates; and the admin dashboard, stats and reports. Requests authenticate with real Sanctum tokens, as the frontend does.
 
-[GitHub Actions](.github/workflows/tests.yml) runs it on PHP 8.3 against both SQLite (what `phpunit.xml` uses locally) and PostgreSQL 17 (what production uses), and also runs a production build of the Next.js app.
+[GitHub Actions](.github/workflows/tests.yml) runs it on PHP 8.3 against both SQLite (what `phpunit.xml` uses locally) and PostgreSQL 17 (what production uses), and also runs a production build of the Next.js app. Running on both matters: SQLite does not enforce the enum CHECK constraints and accepts SQLite-only SQL, so several of the bugs below only showed up on PostgreSQL.
 
-`backend/tests/KnownBugs` holds tests of the *correct* behaviour for the bugs listed below. They fail today, so they sit outside the default suite and CI runs them as a separate, non-blocking step (`php artisan test tests/KnownBugs`). When a bug is fixed, its test moves into `tests/Feature`.
+## Fixed issues
 
-## Known issues
+Writing the tests turned up these bugs. All are fixed, and each has a test in `backend/tests/Feature`:
 
-Found while writing the tests. Each of the first six has a failing test in `backend/tests/KnownBugs`:
-
-- **Anyone can register as an administrator.** `POST /api/register` accepts `role=admin`; the sign-up page only offers client and freelancer, but the API does not restrict it.
-- **Password reset can be triggered with just an email address.** `POST /api/password/reset-request` is public and returns the verification hash that `POST /api/password/reset` accepts, so the hash does not prove anything about the caller.
-- **Refund requests fail on PostgreSQL.** `payments.status` does not allow `refund_requested`.
-- **Deposits and "add funds" fail on PostgreSQL.** `payments.type` only allows `escrow`, `direct` and `refund`, but the wallet code writes `deposit` (and `withdrawal`). SQLite does not enforce these column checks, which is why this works locally.
-- **The admin "resolve dispute" endpoint fails.** `AdminController::resolveDispute` uses `raisedByUser` / `againstUser` relations that the `Dispute` model does not define (it has `complainant` / `respondent`).
-- **`GET /api/disputes/statistics` is unreachable.** It is registered after `/api/disputes/{dispute}`, which captures it.
-- Found by reading the code, not tested: `AdminController::systemStats` uses SQLite's `strftime`, which PostgreSQL does not have.
-
-One bug the tests found is fixed: `PaymentController::createEscrow` left a database transaction open when the client's balance was too low.
+- **Anyone could register as an administrator.** `POST /api/register` accepted `role=admin`. It now accepts only `consumer` and `provider`.
+- **Anyone who knew an email address could reset its password.** The public `POST /api/password/reset-request` (and `/password/regenerate-hash`) returned the reset code in the response. The code is now sent by email only, the response is the same whether or not the address has an account, and the password routes are rate-limited. Without a mail service configured (`MAIL_MAILER=log`, as on the free-tier demo) the email is written only to the server log, so on the hosted demo reset codes reach only the operator's logs until a mail service is configured.
+- **Refunds, deposits and "add funds" failed on PostgreSQL.** `payments.status` did not allow `refund_requested` and `payments.type` did not allow `deposit` or `withdrawal`. A migration widens both constraints.
+- **The admin "resolve dispute" endpoint, and the admin payment and dispute lists, failed.** They loaded relations the models do not define (`raisedByUser`, `fromUser`, ...). They now use `complainant`/`respondent` and `payer`/`payee`.
+- **`GET /api/disputes/statistics` was unreachable.** It was registered after `/api/disputes/{dispute}`, which captured it.
+- **Admin stats and reports failed on PostgreSQL.** They used SQLite's `strftime`/`julianday` and double-quoted string literals. They now use SQL for whichever database is connected.
+- **Wallet transaction history failed.** Its query had `?` placeholders with no values bound.
+- **Creating escrow with too little balance left a database transaction open.**
 
 ## Repository layout
 
@@ -242,9 +239,10 @@ Open [http://localhost:3000](http://localhost:3000). The built-in same-origin pr
 | Freelancer | `marcus@example.com` | `demo123` |
 | Freelancer | `emily@example.com` | `demo123` |
 | Freelancer | `david@example.com` | `demo123` |
-| Administrator | `admin@alpha.com` | `admin123` |
 
 These credentials are for demonstration only. Replace them before using the project in a real environment.
+
+The administrator account is not published. When you seed a local database, set `SEED_ADMIN_PASSWORD`, or the seeder generates a random password for `admin@alpha.com` and prints it once.
 
 ## Useful commands
 
@@ -252,9 +250,8 @@ These credentials are for demonstration only. Replace them before using the proj
 # Frontend production build
 cd frontend && npm run build
 
-# Backend tests (and the known-bug tests, which currently fail)
+# Backend tests
 cd backend && php artisan test
-cd backend && php artisan test tests/KnownBugs
 
 # Reset and reseed the local database
 cd backend && php artisan migrate:fresh --seed
@@ -272,7 +269,7 @@ Every commit to `master` automatically deploys the relevant service. See [`docs/
 
 ## Important project notes
 
-- Wallet, deposits, withdrawals, and escrow are demonstration workflows. They do not transfer real currency or blockchain assets. See [Escrow and payments](#escrow-and-payments-simulated) and [Known issues](#known-issues).
+- Wallet, deposits, withdrawals, and escrow are demonstration workflows. They do not transfer real currency or blockchain assets. See [Escrow and payments](#escrow-and-payments-simulated).
 - Uploaded files require external object storage for durable production use because free Render filesystems are ephemeral.
 - The project is intended as a hobby project, portfolio piece, and full-stack learning reference.
 
@@ -290,7 +287,7 @@ Detailed material lives in [`docs/`](docs/), including:
 
 ## How this was built
 
-From the git history: the repository's first 15 commits are all dated 2026-08-21 and authored as Ronith Rashmikara, starting with the baseline import described in [Project history](#project-history). None of those commits carries an AI co-author trailer. The later commits that added the test suite, CI, the escrow fix and this README section were made with [Claude Code](https://claude.com/claude-code) and carry `Co-Authored-By: Claude` trailers.
+From the git history: the repository's first 15 commits are all dated 2026-08-21 and authored as Ronith Rashmikara, starting with the baseline import described in [Project history](#project-history). None of those commits carries an AI co-author trailer. The later commits that added the test suite, CI, the bug fixes and this README section were made with [Claude Code](https://claude.com/claude-code) and carry `Co-Authored-By: Claude` trailers.
 
 ## License
 
