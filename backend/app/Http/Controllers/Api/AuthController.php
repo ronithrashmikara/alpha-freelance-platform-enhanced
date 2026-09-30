@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\Project;
+use App\Notifications\PasswordResetCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -19,7 +20,9 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:consumer,provider,admin',
+            // Public sign-up creates clients and freelancers only; admins are
+            // created out of band (see database/seeders/DatabaseSeeder.php).
+            'role' => 'required|in:consumer,provider',
         ]);
 
         if ($validator->fails()) {
@@ -253,10 +256,16 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Sends a reset code to the account's email address. The response is the
+     * same whether or not the address has an account, and never contains the
+     * code: returning it let anyone who knew an email address reset that
+     * account's password.
+     */
     public function requestPasswordReset(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
+            'email' => 'required|email',
         ]);
 
         if ($validator->fails()) {
@@ -266,29 +275,29 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $request->email)->first();
-        
-        if (!$user) {
-            return response()->json([
-                'message' => 'User not found'
-            ], 404);
-        }
-
-        // Generate new verification hash
-        $verificationHash = $user->generateVerificationHash();
+        $this->sendResetCode($request->email);
 
         return response()->json([
-            'message' => 'Password reset hash generated successfully',
-            'verification_hash' => $verificationHash,
-            'expires_at' => $user->hash_generated_at->addHours(24)->toISOString(),
-            'note' => 'Use this hash along with your email to reset your password. Hash expires in 24 hours.',
+            'message' => self::RESET_SENT_MESSAGE,
         ]);
+    }
+
+    private const RESET_SENT_MESSAGE = 'If an account exists for that email address, a password reset code has been sent to it. The code expires in 24 hours.';
+
+    private function sendResetCode(string $email): void
+    {
+        $user = User::where('email', $email)->first();
+        if (!$user) {
+            return;
+        }
+
+        $user->notify(new PasswordResetCode($user->generateVerificationHash()));
     }
 
     public function resetPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
+            'email' => 'required|email',
             'verification_hash' => 'required|string|size:8',
             'password' => 'required|string|min:8|confirmed',
         ]);
@@ -331,36 +340,10 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Public: sends a fresh reset code by email. Same response as requestPasswordReset. */
     public function regenerateHash(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $user = User::where('email', $request->email)->first();
-        
-        if (!$user) {
-            return response()->json([
-                'message' => 'User not found'
-            ], 404);
-        }
-
-        // Generate new verification hash
-        $verificationHash = $user->generateVerificationHash();
-
-        return response()->json([
-            'message' => 'New verification hash generated successfully',
-            'verification_hash' => $verificationHash,
-            'expires_at' => $user->hash_generated_at->addHours(24)->toISOString(),
-            'note' => 'Your new verification hash. Previous hash is now invalid.',
-        ]);
+        return $this->requestPasswordReset($request);
     }
 
     public function getVerificationHash(Request $request)

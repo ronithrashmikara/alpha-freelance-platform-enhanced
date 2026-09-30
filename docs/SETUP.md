@@ -88,7 +88,7 @@ Frontend will be available at: `http://localhost:3000`
 
 ### Default Admin Account
 - **Email:** `admin@alpha.com`
-- **Password:** `admin123`
+- **Password:** set with `SEED_ADMIN_PASSWORD` when seeding, or printed once by `php artisan db:seed`
 
 ### Test User Accounts
 - **Consumer:** `sarah@example.com` / `password123`
@@ -102,7 +102,7 @@ curl http://localhost:8000/api/projects
 # Test authentication
 curl -X POST http://localhost:8000/api/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@alpha.com", "password": "admin123"}'
+  -d '{"email": "sarah@example.com", "password": "demo123"}'
 ```
 
 ## 🔧 Key Features Implemented

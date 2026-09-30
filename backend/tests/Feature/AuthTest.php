@@ -47,6 +47,19 @@ class AuthTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors(['name', 'email', 'password', 'role']);
     }
 
+    public function test_public_registration_cannot_create_an_admin(): void
+    {
+        $this->postJson('/api/register', [
+            'name' => 'Mallory',
+            'email' => 'mallory@example.com',
+            'password' => 'secret-password',
+            'password_confirmation' => 'secret-password',
+            'role' => 'admin',
+        ])->assertStatus(422)->assertJsonValidationErrors('role');
+
+        $this->assertDatabaseMissing('users', ['email' => 'mallory@example.com']);
+    }
+
     public function test_login_issues_a_token_only_for_correct_credentials(): void
     {
         $user = $this->makeUser();

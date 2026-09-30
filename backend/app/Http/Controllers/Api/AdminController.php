@@ -26,7 +26,7 @@ class AdminController extends Controller
             'active_disputes' => Dispute::where('status', 'open')->count(),
             'recent_users' => User::latest()->take(5)->get(),
             'recent_projects' => Project::with('user')->latest()->take(5)->get(),
-            'recent_payments' => Payment::with(['fromUser', 'toUser'])->latest()->take(5)->get(),
+            'recent_payments' => Payment::with(['payer', 'payee'])->latest()->take(5)->get(),
         ];
 
         return response()->json($stats);
@@ -148,13 +148,13 @@ class AdminController extends Controller
                 $query->with('user:id,name,email,avatar,rating')->latest();
             },
             'payments' => function($query) {
-                $query->with(['fromUser:id,name,email', 'toUser:id,name,email'])->latest();
+                $query->with(['payer:id,name,email', 'payee:id,name,email'])->latest();
             },
             'disputes' => function($query) {
-                $query->with(['raisedByUser:id,name,email', 'againstUser:id,name,email'])->latest();
+                $query->with(['complainant:id,name,email', 'respondent:id,name,email'])->latest();
             },
             'reviews' => function($query) {
-                $query->with(['reviewer:id,name,email', 'reviewedUser:id,name,email'])->latest();
+                $query->with(['reviewer:id,name,email', 'reviewee:id,name,email'])->latest();
             }
         ]);
 
@@ -183,7 +183,7 @@ class AdminController extends Controller
 
     public function payments(Request $request)
     {
-        $query = Payment::with(['fromUser', 'toUser', 'project']);
+        $query = Payment::with(['payer', 'payee', 'project']);
         
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -195,7 +195,7 @@ class AdminController extends Controller
 
     public function disputes(Request $request)
     {
-        $query = Dispute::with(['raisedByUser', 'againstUser', 'project']);
+        $query = Dispute::with(['complainant', 'respondent', 'project']);
         
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -549,14 +549,15 @@ class AdminController extends Controller
 
             // Handle refund if specified
             if ($request->refund_amount > 0) {
-                $winner = $request->winner === 'raised_by' ? $dispute->raisedByUser : $dispute->againstUser;
+                // "raised_by" is the complainant, "against_user" the respondent.
+                $winner = $request->winner === 'raised_by' ? $dispute->complainant : $dispute->respondent;
                 $winner->wallet->increment('balance_usdt', $request->refund_amount);
             }
         });
 
         return response()->json([
             'message' => 'Dispute resolved successfully',
-            'dispute' => $dispute->fresh(['raisedByUser', 'againstUser'])
+            'dispute' => $dispute->fresh(['complainant', 'respondent'])
         ]);
     }
 
@@ -570,7 +571,7 @@ class AdminController extends Controller
                 ->groupBy('status')
                 ->get(),
             'payments_by_month' => Payment::select(
-                DB::raw('strftime("%Y-%m", created_at) as month'),
+                DB::raw($this->monthOf('created_at').' as month'),
                 DB::raw('SUM(amount) as total'),
                 DB::raw('COUNT(*) as count')
             )
@@ -664,7 +665,7 @@ class AdminController extends Controller
             DB::raw('MIN(bids.amount) as lowest_bid'),
             DB::raw('MAX(bids.amount) as highest_bid'),
             DB::raw('AVG(bids.amount) as average_bid'),
-            DB::raw('julianday(projects.updated_at) - julianday(projects.created_at) as completion_days'),
+            DB::raw($this->daysBetween('projects.created_at', 'projects.updated_at').' as completion_days'),
             DB::raw('COUNT(DISTINCT reviews.id) as review_count'),
             DB::raw('AVG(reviews.rating) as average_rating')
         ])
@@ -685,8 +686,8 @@ class AdminController extends Controller
             'category',
             DB::raw('COUNT(*) as project_count'),
             DB::raw('AVG(budget) as average_budget'),
-            DB::raw('SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) as completed_count'),
-            DB::raw('(SUM(CASE WHEN status = "completed" THEN 1 ELSE 0 END) / COUNT(*) * 100) as completion_rate')
+            DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count"),
+            DB::raw("(100.0 * SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) / COUNT(*)) as completion_rate")
         ])
         ->whereBetween('created_at', [$startDate, $endDate])
         ->groupBy('category')
@@ -738,10 +739,10 @@ class AdminController extends Controller
         ->get();
 
         $monthlyRevenue = Payment::select([
-            DB::raw('strftime("%Y-%m", created_at) as month'),
-            DB::raw('SUM(CASE WHEN type = "escrow" AND status = "completed" THEN amount ELSE 0 END) as escrow_completed'),
-            DB::raw('SUM(CASE WHEN type = "deposit" THEN amount ELSE 0 END) as deposits'),
-            DB::raw('SUM(CASE WHEN type = "withdrawal" THEN amount ELSE 0 END) as withdrawals'),
+            DB::raw($this->monthOf('created_at').' as month'),
+            DB::raw("SUM(CASE WHEN type = 'escrow' AND status = 'completed' THEN amount ELSE 0 END) as escrow_completed"),
+            DB::raw("SUM(CASE WHEN type = 'deposit' THEN amount ELSE 0 END) as deposits"),
+            DB::raw("SUM(CASE WHEN type = 'withdrawal' THEN amount ELSE 0 END) as withdrawals"),
             DB::raw('COUNT(*) as transaction_count')
         ])
         ->whereBetween('created_at', [$startDate, $endDate])
@@ -786,7 +787,7 @@ class AdminController extends Controller
             'respondent.name as respondent_name',
             'projects.title as project_title',
             'projects.budget as project_budget',
-            DB::raw('julianday(COALESCE(disputes.resolved_at, datetime("now"))) - julianday(disputes.created_at) as resolution_days')
+            DB::raw($this->daysBetween('disputes.created_at', 'COALESCE(disputes.resolved_at, CURRENT_TIMESTAMP)').' as resolution_days')
         ])
         ->join('users as complainant', 'disputes.complainant_id', '=', 'complainant.id')
         ->join('users as respondent', 'disputes.respondent_id', '=', 'respondent.id')
@@ -798,8 +799,8 @@ class AdminController extends Controller
         $disputeStats = Dispute::select([
             'type',
             DB::raw('COUNT(*) as count'),
-            DB::raw('AVG(julianday(COALESCE(resolved_at, datetime("now"))) - julianday(created_at)) as avg_resolution_days'),
-            DB::raw('SUM(CASE WHEN status = "resolved" THEN 1 ELSE 0 END) as resolved_count')
+            DB::raw('AVG('.$this->daysBetween('created_at', 'COALESCE(resolved_at, CURRENT_TIMESTAMP)').') as avg_resolution_days'),
+            DB::raw("SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved_count")
         ])
         ->whereBetween('created_at', [$startDate, $endDate])
         ->groupBy('type')
@@ -909,5 +910,25 @@ class AdminController extends Controller
         };
         
         return response()->stream($callback, 200, $headers);
+    }
+
+    /** SQL for the "YYYY-MM" of a timestamp column, for the current database. */
+    private function monthOf(string $column): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'pgsql' => "to_char({$column}, 'YYYY-MM')",
+            'mysql', 'mariadb' => "DATE_FORMAT({$column}, '%Y-%m')",
+            default => "strftime('%Y-%m', {$column})",
+        };
+    }
+
+    /** SQL for the number of days (fractional) from $start to $end, for the current database. */
+    private function daysBetween(string $start, string $end): string
+    {
+        return match (DB::connection()->getDriverName()) {
+            'pgsql' => "(EXTRACT(EPOCH FROM ({$end} - {$start})) / 86400)",
+            'mysql', 'mariadb' => "(TIMESTAMPDIFF(SECOND, {$start}, {$end}) / 86400)",
+            default => "(julianday({$end}) - julianday({$start}))",
+        };
     }
 }

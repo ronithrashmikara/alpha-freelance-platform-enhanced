@@ -73,6 +73,36 @@ class EscrowTest extends TestCase
         $this->assertSame(1100.0, $this->balanceOf($client), 'charged exactly once');
     }
 
+    public function test_held_escrow_can_be_refunded_to_the_client_by_an_admin(): void
+    {
+        [$client, $freelancer, $project] = $this->assignedProject(clientBalance: 2000, bidAmount: 900);
+        $paymentId = $this->actingWithToken($client)->postJson("/api/projects/{$project->id}/escrow")->json('payment.id');
+
+        // Only the payer can ask, with a reason.
+        $this->actingWithToken($freelancer)
+            ->postJson("/api/payments/{$paymentId}/refund", ['reason' => 'The freelancer stopped replying two weeks ago.'])
+            ->assertForbidden();
+        $this->actingWithToken($client)
+            ->postJson("/api/payments/{$paymentId}/refund", ['reason' => 'The freelancer stopped replying two weeks ago.'])
+            ->assertOk()
+            ->assertJsonPath('payment.status', 'refund_requested');
+
+        // A refund-requested payment can no longer be released.
+        $this->actingWithToken($client)->postJson("/api/payments/{$paymentId}/release")->assertStatus(400);
+
+        // Only an admin processes it: money back to the client, project cancelled.
+        $this->actingWithToken($client)->postJson("/api/payments/{$paymentId}/process-refund")->assertForbidden();
+        $this->actingWithToken($this->makeUser('admin'))
+            ->postJson("/api/payments/{$paymentId}/process-refund")
+            ->assertOk()
+            ->assertJsonPath('payment.status', 'refunded');
+
+        $this->assertSame(2000.0, $this->balanceOf($client));
+        $this->assertSame(0.0, $this->balanceOf($freelancer));
+        $this->assertSame('cancelled', $project->fresh()->status);
+        $this->assertNotNull(Payment::find($paymentId)->refunded_at);
+    }
+
     public function test_escrow_is_refused_when_the_client_cannot_cover_the_accepted_bid(): void
     {
         [$client, , $project] = $this->assignedProject(clientBalance: 500, bidAmount: 900);

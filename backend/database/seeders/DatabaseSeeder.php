@@ -9,6 +9,7 @@ use App\Models\Wallet;
 use App\Models\Review;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -17,6 +18,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // The admin password is never a published default: set SEED_ADMIN_PASSWORD,
+        // or a random one is generated and printed once to the console.
+        $adminPassword = env('SEED_ADMIN_PASSWORD') ?: Str::password(20);
+        if (!env('SEED_ADMIN_PASSWORD')) {
+            $this->command?->warn("Seeded admin@alpha.com with a random password: {$adminPassword}");
+        }
+
         // Create users
         $users = [
             [
@@ -69,7 +77,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Admin User',
                 'email' => 'admin@alpha.com',
-                'password' => Hash::make('admin123'),
+                'password' => Hash::make($adminPassword),
                 'role' => 'admin',
                 'avatar' => 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
                 'bio' => 'Platform administrator',

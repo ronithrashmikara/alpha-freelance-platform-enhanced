@@ -408,7 +408,7 @@ GET    /api/projects/{id}/reviews # Get project reviews (Public)
 ```
 Admin:
 - Email: admin@alpha.com
-- Password: admin123
+- Password: set with `SEED_ADMIN_PASSWORD` when seeding, or printed once by `php artisan db:seed`
 
 Consumer:
 - Email: sarah@example.com

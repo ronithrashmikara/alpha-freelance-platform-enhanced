@@ -6,7 +6,7 @@ This document demonstrates the complete workflow of the Alpha Freelance Platform
 ## Demo Users
 - **Consumer**: test@example.com (password: password) - Role: consumer
 - **Provider**: john.provider@test.com (password: password) - Role: provider  
-- **Admin**: admin@alpha.com (password: admin123) - Role: admin
+- **Admin**: admin@alpha.com (password set with `SEED_ADMIN_PASSWORD` when seeding, or printed once by `php artisan db:seed`) - Role: admin
 
 ## Complete Workflow Demonstration
 

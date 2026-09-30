@@ -83,4 +83,44 @@ class DisputeTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'dispute.messages');
     }
+
+    public function test_an_admin_can_resolve_through_the_admin_endpoint_and_credit_the_winner(): void
+    {
+        [$client, $freelancer, $project] = $this->assignedProject(clientBalance: 2000);
+        $admin = $this->makeUser('admin');
+        $disputeId = $this->openDispute($client, $freelancer, $project)->json('dispute.id');
+
+        $this->actingWithToken($client)
+            ->postJson("/api/admin/disputes/{$disputeId}/resolve", ['resolution' => 'Mine', 'winner' => 'raised_by'])
+            ->assertForbidden();
+
+        $this->actingWithToken($admin)
+            ->postJson("/api/admin/disputes/{$disputeId}/resolve", [
+                'resolution' => 'Partial refund to the client.',
+                'winner' => 'raised_by',
+                'refund_amount' => 150,
+            ])
+            ->assertOk()
+            ->assertJsonPath('dispute.status', 'resolved')
+            ->assertJsonPath('dispute.complainant.id', $client->id)
+            ->assertJsonPath('dispute.respondent.id', $freelancer->id);
+
+        $this->assertSame(2150.0, $this->balanceOf($client));
+        $this->assertSame($admin->id, (int) Dispute::find($disputeId)->resolved_by);
+    }
+
+    public function test_dispute_statistics_are_reachable_for_admins_only(): void
+    {
+        [$client, $freelancer, $project] = $this->assignedProject();
+        $this->openDispute($client, $freelancer, $project)->assertCreated();
+
+        $this->actingWithToken($client)->getJson('/api/disputes/statistics')->assertForbidden();
+
+        $this->actingWithToken($this->makeUser('admin'))
+            ->getJson('/api/disputes/statistics')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('open', 1)
+            ->assertJsonPath('by_type.quality', 1);
+    }
 }

@@ -192,9 +192,6 @@ export default function LoginPage() {
             <div className="text-sm">
               <strong className="text-blue-900">Provider:</strong> marcus@example.com / demo123
             </div>
-            <div className="text-sm">
-              <strong className="text-blue-900">Admin:</strong> admin@alpha.com / admin123
-            </div>
           </CardContent>
         </Card>
       </div>

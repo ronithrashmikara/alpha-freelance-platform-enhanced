@@ -44,9 +44,11 @@ class WalletController extends Controller
                 'status',
                 'transaction_hash',
                 'created_at',
-                DB::raw('CASE WHEN payer_id = ? THEN "outgoing" ELSE "incoming" END as direction'),
-                DB::raw('CASE WHEN payer_id = ? THEN payee_id ELSE payer_id END as other_party_id')
             ])
+            // The placeholders need their own bindings (they had none, so the
+            // query failed), and string literals must be single-quoted for PostgreSQL.
+            ->selectRaw("CASE WHEN payer_id = ? THEN 'outgoing' ELSE 'incoming' END as direction", [$user->id])
+            ->selectRaw('CASE WHEN payer_id = ? THEN payee_id ELSE payer_id END as other_party_id', [$user->id])
             ->where('payer_id', $user->id)
             ->orWhere('payee_id', $user->id)
             ->orderBy('created_at', 'desc')

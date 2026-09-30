@@ -23,9 +23,12 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 // Password reset routes (public)
-Route::post('/password/reset-request', [AuthController::class, 'requestPasswordReset']);
-Route::post('/password/reset', [AuthController::class, 'resetPassword']);
-Route::post('/password/regenerate-hash', [AuthController::class, 'regenerateHash']);
+// Rate-limited: each request emails a code, and reset codes are short.
+Route::middleware('throttle:10,1')->group(function () {
+    Route::post('/password/reset-request', [AuthController::class, 'requestPasswordReset']);
+    Route::post('/password/reset', [AuthController::class, 'resetPassword']);
+    Route::post('/password/regenerate-hash', [AuthController::class, 'regenerateHash']);
+});
 
 // Public project routes
 Route::get('/projects', [ProjectController::class, 'index']);
@@ -85,11 +88,12 @@ Route::middleware('api.auth')->group(function () {
     // Dispute routes
     Route::get('/disputes', [DisputeController::class, 'index']);
     Route::post('/disputes', [DisputeController::class, 'store']);
+    // Before /disputes/{dispute}, which would otherwise capture "statistics".
+    Route::get('/disputes/statistics', [DisputeController::class, 'statistics']);
     Route::get('/disputes/{dispute}', [DisputeController::class, 'show']);
     Route::put('/disputes/{dispute}', [DisputeController::class, 'update']);
     Route::post('/disputes/{dispute}/messages', [DisputeController::class, 'addMessage']);
     Route::post('/disputes/{dispute}/close', [DisputeController::class, 'close']);
-    Route::get('/disputes/statistics', [DisputeController::class, 'statistics']);
     
     // Review routes
     Route::post('/reviews', [ReviewController::class, 'store']);

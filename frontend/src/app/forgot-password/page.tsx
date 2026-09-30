@@ -28,10 +28,11 @@ export default function ForgotPasswordPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(`Password reset hash generated: ${data.verification_hash}. Click here to reset your password.`);
-        // Auto-redirect to reset password page with hash pre-filled
+        // The API never returns the code; it is sent to the account's email address.
+        setMessage(data.message || 'If an account exists for that email address, a reset code has been sent to it.');
+        const target = `/reset-password?email=${encodeURIComponent(email)}`;
         setTimeout(() => {
-          window.location.href = `/reset-password?email=${encodeURIComponent(email)}&hash=${data.verification_hash}`;
+          window.location.href = target;
         }, 3000);
         setEmail('');
       } else {
@@ -62,7 +63,7 @@ export default function ForgotPasswordPage() {
             Forgot your password?
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your email address and we'll generate a reset hash for you.
+            Enter your email address and we'll email you a reset code.
           </p>
         </div>
 
@@ -105,7 +106,7 @@ export default function ForgotPasswordPage() {
                 disabled={isLoading}
                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Generating...' : 'Generate Reset Hash'}
+                {isLoading ? 'Sending...' : 'Send Reset Code'}
               </button>
             </div>
 
@@ -124,9 +125,9 @@ export default function ForgotPasswordPage() {
           <h3 className="text-sm font-medium text-blue-800 mb-2">How it works:</h3>
           <ol className="text-xs text-blue-700 space-y-1">
             <li>1. Enter your email address above</li>
-            <li>2. We'll generate a unique 8-character reset hash</li>
-            <li>3. Use the hash with your email to reset your password</li>
-            <li>4. The hash expires in 24 hours for security</li>
+            <li>2. If it has an account, we email it an 8-character reset code</li>
+            <li>3. Enter the code with your email to set a new password</li>
+            <li>4. The code expires in 24 hours. The code you saved at sign-up also works while it is valid</li>
           </ol>
         </div>
       </div>

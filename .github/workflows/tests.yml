@@ -66,12 +66,6 @@ jobs:
       - name: Run tests
         run: php artisan test
 
-      # Tests that document real bugs (tests/KnownBugs). They assert the correct
-      # behaviour and are expected to fail until fixed; this step never fails the build.
-      - name: Known bugs (expected to fail, non-blocking)
-        continue-on-error: true
-        run: php artisan test tests/KnownBugs
-
   frontend:
     name: Next.js build
     runs-on: ubuntu-latest
